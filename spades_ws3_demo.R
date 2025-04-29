@@ -1,21 +1,11 @@
 # minimal demo of a working SpaDES model with harvesting (using ws3)
+# minimal demo of a working SpaDES model with harvesting (using ws3)
+repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
+source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
+getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9003", "0.1.1.9037")) # only install/update if required
 
-library(reticulate)
-library(SpaDES)
-
-################################################################################
-# set up SpaDES paths
-setPaths(modulePath = 'modules',
-         inputPath = 'input',
-         outputPath = 'output',
-         cachePath = 'cache')
-paths <- getPaths()
-################################################################################
-
-################################################################################
-# define SpaDES module import list
-modules <- list('spades_ws3_dataInit', 'bogus_fire', 'spades_ws3')
-################################################################################
+Require::setLinuxBinaryRepo()
+Sys.setenv(RETICULATE_PYTHON=".venv/bin/python")
 
 ################################################################################
 # define local variables (spades_ws3 module parameters)
@@ -24,41 +14,78 @@ base.year <- 2020
 basenames <- list(c("tsa41")) # only run one TSA as a test (faster and simpler)
 horizon <- 3 # this would typically be one or two rotations (10 or 20 periods)
 period_length <- 10 # do not modify this unless you know what you are doing
-times <- list(start = 0, end = horizon - 1) # do not modify
+# times <- list(start = 0, end = horizon - 1) # do not modify
 tifPath <- "tif" # do not modify (works with included dataset)
-outputs <-data.frame(objectName = "landscape") # do not modify
+# outputs <-data.frame(objectName = "landscape") # do not modify
 scheduler.mode <- "areacontrol" # self-tuning oldest-first priority queue heuristic algorithm (should "just work")
 # scheduler.mode <- "optimize" # this should also "just work" (needs more testing)
 target.masks <- list(c('? ? ? ?')) # do not modify
 target.scalefactors <- NULL
+shp.path <- "gis/shp"
 ################################################################################
 
-################################################################################
-# define SpaDES params input arg data structure
-params <- list(spades_ws3_dataInit = list(basenames = basenames,
-                                          tifPath = tifPath,
-                                          base.year = base.year,
-                                          .saveInitialTime = 0,
-                                          .saveInterval = 1,
-                                          .saveObjects = c("landscape"),
-                                          .savePath = file.path(paths$outputPath, "landscape")),
-               spades_ws3 = list(basenames = basenames,
-                                 horizon = 3,
-                                 period_length = period_length,
-                                 tif.path = tif.path,
-                                 shp.path = shp.path,
-                                 base.year = base.year,
-                                 scheduler.mode = scheduler.mode,
-                                 target.masks = target.masks,
-                                 target.scalefactors = target.scalefactors),
-               bogus_fire = list(p.to.zero = 0.99))
-sim <- simInit(paths=paths, modules=modules, times=times, params=params, outputs=outputs)
-################################################################################
+out <- SpaDES.project::setupProject(
+  useGit = TRUE,
+  paths = list(modulePath = 'modules',
+                   inputPath = 'input',
+                   outputPath = 'output',
+                   cachePath = 'cache'),
+  # overwrite = TRUE, # useGit = "eliotmcintire",
+  modules = c("UBC-FRESH/spades_ws3_dataInit",
+              "UBC-FRESH/spades_ws3@dev",
+              "bogus_fire")
+  ,
+  times = list(start = 0, end = horizon - 1), # do not modify
+  outputs = data.frame(objectName = "landscape"), # do not modify
+  params = list(spades_ws3_dataInit = list(basenames = basenames,
+                                           tifPath = tifPath,
+                                           base.year = base.year,
+                                           .saveInitialTime = 0,
+                                           .saveInterval = 1,
+                                           .saveObjects = c("landscape"),
+                                           .savePath = file.path(paths$outputPath, "landscape")),
+                spades_ws3 = list(basenames = basenames,
+                                  horizon = 3,
+                                  period_length = period_length,
+                                  tif.path = tifPath,
+                                  shp.path = shp.path,
+                                  base.year = base.year,
+                                  scheduler.mode = scheduler.mode,
+                                  target.masks = target.masks,
+                                  target.scalefactors = target.scalefactors),
+                bogus_fire = list(p.to.zero = 0.99))
+  ,
+  packages = c("gert", "SpaDES", "reticulate"),
+  require = "SpaDES.core"
+)
 
+simOut <- do.call(SpaDES.core::simInitAndSpades, out)
 ################################################################################
-# run SpaDES simulation
-simOut <- spades(sim, debug=TRUE)
-#
+if (FALSE) {
+  # set up SpaDES paths
+  setPaths(modulePath = 'modules',
+           inputPath = 'input',
+           outputPath = 'output',
+           cachePath = 'cache')
+  paths <- getPaths()
+  ################################################################################
+  
+  ################################################################################
+  # define SpaDES module import list
+  modules <- list('spades_ws3_dataInit', 'bogus_fire', 'spades_ws3')
+  ################################################################################
+  
+  
+  ################################################################################
+  # define SpaDES params input arg data structure
+  sim <- SpaDES.core::simInit(paths=out$paths, modules=out$modules, times=times, params=params, outputs=outputs)
+  ################################################################################
+  
+  ################################################################################
+  # run SpaDES simulation
+  simOut <- SpaDES.core::spades(sim, debug=TRUE)
+  #
+}
 
 ################################################################################
 # plot something ?
