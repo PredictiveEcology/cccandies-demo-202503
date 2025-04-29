@@ -31,8 +31,8 @@ out <- SpaDES.project::setupProject(
                    outputPath = 'output',
                    cachePath = 'cache'),
   # overwrite = TRUE, # useGit = "eliotmcintire",
-  modules = c("UBC-FRESH/spades_ws3_dataInit",
-              "UBC-FRESH/spades_ws3@dev",
+  modules = c("PredictiveEcology/spades_ws3_dataInit",
+              "PredictiveEcology/spades_ws3@dev",
               "bogus_fire")
   ,
   times = list(start = 0, end = horizon - 1), # do not modify
